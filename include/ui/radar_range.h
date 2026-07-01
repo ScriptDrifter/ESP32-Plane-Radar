@@ -53,4 +53,20 @@ void formatCurrentRing3Label(char* buf, size_t len);
 /** Reset distance units to km (e.g. with WiFi credential wipe). */
 void unitsReset();
 
+/** Which cardinal direction appears at the top of the radar display. */
+enum class DisplayTop : uint8_t { kNorth = 0, kSouth = 1, kEast = 2, kWest = 3 };
+DisplayTop displayTop();
+/** Portal text field value: single letter N/S/E/W (case-insensitive). */
+void saveDisplayTopFromPortal(const char* value);
+
+/** View cone: wedge drawn from radar center showing what's visible from the window. */
+bool viewConeEnabled();
+float viewConeLeftLat();
+float viewConeLeftLon();
+float viewConeRightLat();
+float viewConeRightLon();
+void saveViewConeFromPortal(const char* enabled,
+                             const char* left_lat, const char* left_lon,
+                             const char* right_lat, const char* right_lon);
+
 }  // namespace ui::radar

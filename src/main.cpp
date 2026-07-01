@@ -30,14 +30,13 @@ void showRadarIfConnected() {
   g_radar_visible = true;
 }
 
-void onRangeTap() {
+void onTap() {
   ui::radar::rangeNext();
   char range_label[12];
   ui::radar::formatCurrentRing3Label(range_label, sizeof(range_label));
   Serial.printf("Range: %s (outer ~%.0f km)\n", range_label,
                 ui::radar::rangeCurrent().outer_km);
-
-  if (g_radar_visible && WiFi.status() == WL_CONNECTED) {
+  if (g_radar_visible) {
     ui::radarDisplayDraw();
   }
 }
@@ -45,7 +44,7 @@ void onRangeTap() {
 void handleBootButton() {
   bootButtonPollLongPress();
   if (bootButtonConsumeTap()) {
-    onRangeTap();
+    onTap();
   }
 }
 

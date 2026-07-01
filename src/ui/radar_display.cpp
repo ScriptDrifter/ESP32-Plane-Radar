@@ -22,6 +22,7 @@ namespace radar {
 
 uint16_t kColorBackground = 0x0000;
 uint16_t kColorGrid = 0x0320;
+uint16_t kColorViewCone = 0x0000;
 uint16_t kColorLabel = 0xFFFF;
 uint16_t kColorCenter = 0xFFFF;
 uint16_t kColorAircraft = 0x001F;
@@ -197,6 +198,8 @@ void initPalette() {
       tft.color565(radar::kRunwayR, radar::kRunwayG, radar::kRunwayB);
   radar::kColorRunwayLabel = tft.color565(radar::kRunwayLabelR, radar::kRunwayLabelG,
                                           radar::kRunwayLabelB);
+  radar::kColorViewCone = tft.color565(radar::kViewConeR, radar::kViewConeG,
+                                       radar::kViewConeB);
 }
 
 constexpr float kKmPerDeg = 111.0f;
@@ -217,7 +220,6 @@ float innerRingMaxKm() {
                      static_cast<float>(radar::kGridOuterRadius));
 }
 
-/** Flat lat/lon as x/y: 1° ≈ 111 km, north = screen up. */
 void latLonToScreen(float lat, float lon, int* out_x, int* out_y) {
   const float outer_km = radar::rangeCurrent().outer_km;
   const float px_per_km = static_cast<float>(radar::kGridOuterRadius) / outer_km;
@@ -227,8 +229,19 @@ void latLonToScreen(float lat, float lon, int* out_x, int* out_y) {
   float dist_km = 0.0f;
   offsetKmFromCenter(lat, lon, &dx_km, &dy_km, &dist_km);
 
-  *out_x = radar::kCenterX + static_cast<int>(lroundf(dx_km * px_per_km));
-  *out_y = radar::kCenterY - static_cast<int>(lroundf(dy_km * px_per_km));
+  const int sdx = static_cast<int>(lroundf(dx_km * px_per_km));
+  const int sdy = static_cast<int>(lroundf(dy_km * px_per_km));
+  switch (radar::displayTop()) {
+    case radar::DisplayTop::kNorth:
+      *out_x = radar::kCenterX + sdx;  *out_y = radar::kCenterY - sdy; break;
+    case radar::DisplayTop::kSouth:
+      *out_x = radar::kCenterX - sdx;  *out_y = radar::kCenterY + sdy; break;
+    case radar::DisplayTop::kEast:
+      *out_x = radar::kCenterX - sdy;  *out_y = radar::kCenterY - sdx; break;
+    case radar::DisplayTop::kWest:
+    default:
+      *out_x = radar::kCenterX + sdy;  *out_y = radar::kCenterY + sdx; break;
+  }
 }
 
 bool isInsideOuterRingKm(float dist_km) { return dist_km <= innerRingMaxKm(); }
@@ -244,7 +257,6 @@ bool isInsideOuterRing(int x, int y) {
   return distSqFromCenter(x, y) <= max_r * max_r;
 }
 
-/** Rim dot from true bearing; always on screen edge (even if target is 50+ km away). */
 bool beyondRingEdgeDotFromLatLon(float lat, float lon, int* out_x, int* out_y) {
   float dx_km = 0.0f;
   float dy_km = 0.0f;
@@ -260,10 +272,19 @@ bool beyondRingEdgeDotFromLatLon(float lat, float lon, int* out_x, int* out_y) {
   const int cx = radar::kCenterX;
   const int cy = radar::kCenterY;
   const int rim_r = radar::kCenterX - radar::kBeyondRingScreenMarginPx;
-  const float angle_rad = atan2f(dx_km, dy_km);
-
-  *out_x = cx + static_cast<int>(lroundf(sinf(angle_rad) * rim_r));
-  *out_y = cy - static_cast<int>(lroundf(cosf(angle_rad) * rim_r));
+  // bearing_rad: atan2(east, north) = clockwise from north (true bearing)
+  const float bearing_rad = atan2f(dx_km, dy_km);
+  float offset = 0.0f;
+  switch (radar::displayTop()) {
+    case radar::DisplayTop::kNorth: offset = 0.0f;                              break;
+    case radar::DisplayTop::kSouth: offset = 3.14159265f;                       break;
+    case radar::DisplayTop::kEast:  offset = -3.14159265f / 2.0f;               break;
+    case radar::DisplayTop::kWest:
+    default:                        offset =  3.14159265f / 2.0f;               break;
+  }
+  const float dr = bearing_rad + offset;
+  *out_x = cx + static_cast<int>(lroundf(sinf(dr) * rim_r));
+  *out_y = cy - static_cast<int>(lroundf(cosf(dr) * rim_r));
   return true;
 }
 
@@ -318,16 +339,26 @@ int speedLineLengthPx(float gs_knots) {
   return len;
 }
 
+float headingDisplayOffset() {
+  switch (radar::displayTop()) {
+    case radar::DisplayTop::kNorth: return 0.0f;
+    case radar::DisplayTop::kSouth: return 180.0f;
+    case radar::DisplayTop::kEast:  return 270.0f;
+    case radar::DisplayTop::kWest:
+    default:                        return 90.0f;
+  }
+}
+
 void noseTip(int cx, int cy, float heading_deg, int* tip_x, int* tip_y) {
   constexpr float kDegToRad = 0.01745329252f;
-  const float rad = heading_deg * kDegToRad;
+  const float rad = (heading_deg + headingDisplayOffset()) * kDegToRad;
   *tip_x = cx + static_cast<int>(lroundf(sinf(rad) * radar::kAircraftNoseLenPx));
   *tip_y = cy - static_cast<int>(lroundf(cosf(rad) * radar::kAircraftNoseLenPx));
 }
 
 void drawHeadingTriangle(int cx, int cy, float heading_deg, uint16_t color) {
   constexpr float kDegToRad = 0.01745329252f;
-  const float rad = heading_deg * kDegToRad;
+  const float rad = (heading_deg + headingDisplayOffset()) * kDegToRad;
   const float sin_h = sinf(rad);
   const float cos_h = cosf(rad);
 
@@ -359,7 +390,7 @@ void drawSpeedVector(int cx, int cy, float heading_deg, float track_deg,
   noseTip(cx, cy, heading_deg, &tip_x, &tip_y);
 
   constexpr float kDegToRad = 0.01745329252f;
-  const float rad = track_deg * kDegToRad;
+  const float rad = (track_deg + headingDisplayOffset()) * kDegToRad;
   int ex = tip_x + static_cast<int>(lroundf(sinf(rad) * len));
   int ey = tip_y - static_cast<int>(lroundf(cosf(rad) * len));
   clipPointToOuterRing(tip_x, tip_y, &ex, &ey);
@@ -618,11 +649,26 @@ void drawCardinalLabels() {
   const int cy = radar::kCenterY;
   const int edge = radar::kSize - 1;
 
-  drawCardinalLabel("N", cx, radar::kCardinalNorthOffsetY, textdatum_t::top_center);
-  drawCardinalLabel("S", cx, edge + radar::kCardinalSouthOffsetY,
-                    textdatum_t::bottom_center);
-  drawCardinalLabel("W", 0, cy, textdatum_t::middle_left);
-  drawCardinalLabel("E", edge, cy, textdatum_t::middle_right);
+  const char* top_lbl;
+  const char* bot_lbl;
+  const char* left_lbl;
+  const char* right_lbl;
+  switch (radar::displayTop()) {
+    case radar::DisplayTop::kNorth:
+      top_lbl = "N"; bot_lbl = "S"; left_lbl = "W"; right_lbl = "E"; break;
+    case radar::DisplayTop::kSouth:
+      top_lbl = "S"; bot_lbl = "N"; left_lbl = "E"; right_lbl = "W"; break;
+    case radar::DisplayTop::kEast:
+      top_lbl = "E"; bot_lbl = "W"; left_lbl = "N"; right_lbl = "S"; break;
+    case radar::DisplayTop::kWest:
+    default:
+      top_lbl = "W"; bot_lbl = "E"; left_lbl = "S"; right_lbl = "N"; break;
+  }
+
+  drawCardinalLabel(top_lbl,   cx,   radar::kCardinalNorthOffsetY,   textdatum_t::top_center);
+  drawCardinalLabel(bot_lbl,   cx,   edge + radar::kCardinalSouthOffsetY, textdatum_t::bottom_center);
+  drawCardinalLabel(left_lbl,  0,    cy,                             textdatum_t::middle_left);
+  drawCardinalLabel(right_lbl, edge, cy,                             textdatum_t::middle_right);
 }
 
 int scaleLabelAnchorX(int cx, int outer_radius) {
@@ -636,6 +682,42 @@ void drawScaleLabel(int cx, int cy, int outer_radius) {
                                scaleLabelAnchorX(cx, outer_radius), cy);
 }
 
+void drawViewCone() {
+  if (!radar::viewConeEnabled()) return;
+
+  const int cx = radar::kCenterX;
+  const int cy = radar::kCenterY;
+
+  // Use latLonToScreen so the cone is always consistent with the display orientation.
+  int lx = 0, ly = 0, rx = 0, ry = 0;
+  latLonToScreen(radar::viewConeLeftLat(),  radar::viewConeLeftLon(),  &lx, &ly);
+  latLonToScreen(radar::viewConeRightLat(), radar::viewConeRightLon(), &rx, &ry);
+
+  if (lx == cx && ly == cy) return;
+  if (rx == cx && ry == cy) return;
+
+  // Screen angle for fillArc: 0=right (3 o'clock), CW.
+  // atan2(dx, dy_up) gives 0=top; subtract 90° to shift to fillArc's convention.
+  constexpr float kRadToDeg = 180.0f / 3.14159265f;
+  float angle_start = atan2f(static_cast<float>(lx - cx),
+                             static_cast<float>(cy - ly)) * kRadToDeg - 90.0f;
+  float angle_end   = atan2f(static_cast<float>(rx - cx),
+                             static_cast<float>(cy - ry)) * kRadToDeg - 90.0f;
+
+  // Normalize to [0, 360)
+  while (angle_start <    0.0f) angle_start += 360.0f;
+  while (angle_start >= 360.0f) angle_start -= 360.0f;
+  while (angle_end   <    0.0f) angle_end   += 360.0f;
+  while (angle_end   >= 360.0f) angle_end   -= 360.0f;
+
+  // Draw clockwise from left edge to right edge
+  if (angle_end <= angle_start) angle_end += 360.0f;
+
+  s_draw->fillArc(cx, cy, 0, radar::kGridOuterRadius,
+                  angle_start, angle_end,
+                  radar::kColorViewCone);
+}
+
 template <typename Gfx>
 void drawStaticGrid(Gfx& gfx) {
   initLabelMetrics();
@@ -646,6 +728,7 @@ void drawStaticGrid(Gfx& gfx) {
   const int grid_r = radar::kGridOuterRadius;
 
   gfx.fillScreen(radar::kColorBackground);
+  drawViewCone();
   drawRings(cx, cy, grid_r);
   drawCrosshairs(cx, cy, grid_r, radar::kColorGrid);
   initPalette();

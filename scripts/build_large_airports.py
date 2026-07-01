@@ -23,6 +23,12 @@ RUNWAYS_URL = (
     "runways.csv"
 )
 
+# Extra airports to include regardless of type — FAA or ICAO identifiers, max 4 chars.
+EXTRA_IDENTS: set[str] = {
+    "KC29",
+    "KMSN",
+}
+
 def fetch_csv(url: str) -> list[dict[str, str]]:
     with urllib.request.urlopen(url, timeout=60) as resp:
         text = resp.read().decode("utf-8")
@@ -69,10 +75,11 @@ def build_dataset() -> tuple[
 
     large_idents: dict[str, tuple[int, int]] = {}
     for a in airports:
-        if a.get("type") != "large_airport":
-            continue
         ident = (a.get("ident") or "").strip()
-        if len(ident) != 4:
+        is_extra = ident in EXTRA_IDENTS
+        if not is_extra and a.get("type") != "large_airport":
+            continue
+        if len(ident) > 4:
             continue
         lat = coord_e7(a.get("latitude_deg"))
         lon = coord_e7(a.get("longitude_deg"))

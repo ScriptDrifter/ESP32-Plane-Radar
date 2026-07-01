@@ -88,6 +88,10 @@ constexpr uint8_t kRunwayB = 170;
 constexpr uint8_t kRunwayLabelR = 110;
 constexpr uint8_t kRunwayLabelG = 210;
 constexpr uint8_t kRunwayLabelB = 230;
+/** Subtle warm amber fill drawn under the grid to mark the window view cone. */
+constexpr uint8_t kViewConeR = 45;
+constexpr uint8_t kViewConeG = 32;
+constexpr uint8_t kViewConeB = 5;
 
 extern uint16_t kColorBackground;
 extern uint16_t kColorGrid;
@@ -99,5 +103,6 @@ extern uint16_t kColorTagType;
 extern uint16_t kColorTagAltitude;
 extern uint16_t kColorRunway;
 extern uint16_t kColorRunwayLabel;
+extern uint16_t kColorViewCone;
 
 }  // namespace ui::radar

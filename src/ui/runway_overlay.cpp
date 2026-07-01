@@ -91,8 +91,19 @@ void latLonToScreen(float lat, float lon, int* out_x, int* out_y) {
   float dist_km = 0.0f;
   offsetKmFromCenter(lat, lon, &dx_km, &dy_km, &dist_km);
 
-  *out_x = radar::kCenterX + static_cast<int>(lroundf(dx_km * px_per_km));
-  *out_y = radar::kCenterY - static_cast<int>(lroundf(dy_km * px_per_km));
+  const int sdx = static_cast<int>(lroundf(dx_km * px_per_km));
+  const int sdy = static_cast<int>(lroundf(dy_km * px_per_km));
+  switch (radar::displayTop()) {
+    case radar::DisplayTop::kNorth:
+      *out_x = radar::kCenterX + sdx;  *out_y = radar::kCenterY - sdy; break;
+    case radar::DisplayTop::kSouth:
+      *out_x = radar::kCenterX - sdx;  *out_y = radar::kCenterY + sdy; break;
+    case radar::DisplayTop::kEast:
+      *out_x = radar::kCenterX - sdy;  *out_y = radar::kCenterY - sdx; break;
+    case radar::DisplayTop::kWest:
+    default:
+      *out_x = radar::kCenterX + sdy;  *out_y = radar::kCenterY + sdx; break;
+  }
 }
 
 int distSqFromCenter(int x, int y) {

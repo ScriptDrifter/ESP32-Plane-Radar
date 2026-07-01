@@ -84,6 +84,27 @@ char s_runways_checkbox_attrs[32] = "type=\"checkbox\"";
 WiFiManagerParameter s_param_runways("show_runways", "Show airport runways", "T", 2,
                                      s_runways_checkbox_attrs, WFM_LABEL_AFTER);
 
+WiFiManagerParameter s_param_display_top("display_top", "Radar top direction (N/S/E/W)", "N", 2);
+
+WiFiManagerParameter s_sep_display_top("<br/>");
+WiFiManagerParameter s_sep_vc_left("<br/>");
+
+char s_vc_checkbox_attrs[32] = "type=\"checkbox\"";
+WiFiManagerParameter s_param_vc_enabled("vc_enabled", "Show window view cone", "T", 2,
+                                         s_vc_checkbox_attrs, WFM_LABEL_AFTER);
+
+WiFiManagerParameter s_param_vc_left_lat("vc_left_lat", "View cone left edge latitude", "0",
+                                          kCoordParamLen, kCoordInputAttrs);
+                                          
+WiFiManagerParameter s_param_vc_left_lon("vc_left_lon", "View cone left edge longitude", "0",
+                                          kCoordParamLen, kCoordInputAttrs);
+
+WiFiManagerParameter s_param_vc_right_lat("vc_right_lat", "View cone right edge latitude", "0",
+                                           kCoordParamLen, kCoordInputAttrs);
+                                           
+WiFiManagerParameter s_param_vc_right_lon("vc_right_lon", "View cone right edge longitude", "0",
+                                           kCoordParamLen, kCoordInputAttrs);
+
 void refreshPortalParamDefaults() {
   char lat_buf[kCoordParamLen + 1];
   char lon_buf[kCoordParamLen + 1];
@@ -97,6 +118,23 @@ void refreshPortalParamDefaults() {
   snprintf(s_runways_checkbox_attrs, sizeof(s_runways_checkbox_attrs),
            "type=\"checkbox\"%s", ui::radar::showRunways() ? " checked" : "");
   s_param_runways.setValue("T", 2);
+
+  const char* top_letters[] = {"N", "S", "E", "W"};
+  s_param_display_top.setValue(
+      top_letters[static_cast<int>(ui::radar::displayTop())], 2);
+
+  snprintf(s_vc_checkbox_attrs, sizeof(s_vc_checkbox_attrs), "type=\"checkbox\"%s",
+           ui::radar::viewConeEnabled() ? " checked" : "");
+  s_param_vc_enabled.setValue("T", 2);
+  char vc_buf[kCoordParamLen + 1];
+  snprintf(vc_buf, sizeof(vc_buf), "%.6f", ui::radar::viewConeLeftLat());
+  s_param_vc_left_lat.setValue(vc_buf, kCoordParamLen);
+  snprintf(vc_buf, sizeof(vc_buf), "%.6f", ui::radar::viewConeLeftLon());
+  s_param_vc_left_lon.setValue(vc_buf, kCoordParamLen);
+  snprintf(vc_buf, sizeof(vc_buf), "%.6f", ui::radar::viewConeRightLat());
+  s_param_vc_right_lat.setValue(vc_buf, kCoordParamLen);
+  snprintf(vc_buf, sizeof(vc_buf), "%.6f", ui::radar::viewConeRightLon());
+  s_param_vc_right_lon.setValue(vc_buf, kCoordParamLen);
 }
 
 void onPortalParamsSaved() {
@@ -106,6 +144,11 @@ void onPortalParamsSaved() {
   }
   ui::radar::saveMilesFromPortal(s_param_miles.getValue());
   ui::radar::saveRunwaysFromPortal(s_param_runways.getValue());
+  ui::radar::saveDisplayTopFromPortal(s_param_display_top.getValue());
+  ui::radar::saveViewConeFromPortal(
+      s_param_vc_enabled.getValue(),
+      s_param_vc_left_lat.getValue(),  s_param_vc_left_lon.getValue(),
+      s_param_vc_right_lat.getValue(), s_param_vc_right_lon.getValue());
 }
 
 void attachPortalParams(WiFiManager& wm) {
@@ -114,6 +157,14 @@ void attachPortalParams(WiFiManager& wm) {
   wm.addParameter(&s_param_lon);
   wm.addParameter(&s_param_miles);
   wm.addParameter(&s_param_runways);
+  wm.addParameter(&s_sep_display_top);
+  wm.addParameter(&s_param_display_top);
+  wm.addParameter(&s_param_vc_enabled);
+  wm.addParameter(&s_sep_vc_left);
+  wm.addParameter(&s_param_vc_left_lat);
+  wm.addParameter(&s_param_vc_left_lon);
+  wm.addParameter(&s_param_vc_right_lat);
+  wm.addParameter(&s_param_vc_right_lon);
   wm.setSaveParamsCallback(onPortalParamsSaved);
 }
 
