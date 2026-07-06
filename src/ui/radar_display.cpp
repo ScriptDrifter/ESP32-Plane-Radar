@@ -144,7 +144,7 @@ void initLabelMetrics() {
   char label[12];
   for (size_t i = 0; i < radar::kRangePresetCount; ++i) {
     for (bool miles : {false, true}) {
-      radar::formatRing3Label(label, sizeof(label), radar::kRangePresets[i].ring3_km,
+      radar::formatRing3Label(label, sizeof(label), radar::rangePreset(i).ring3_km,
                               miles);
       const int w = tft.textWidth(label);
       if (w > s_scale_label_max_w) {
@@ -781,6 +781,11 @@ void radarDisplayDraw() {
   drawStaticGrid(tft);
   drawAircraft();
   tft.setTextDatum(textdatum_t::top_left);
+}
+
+void radarDisplayResetMetrics() {
+  s_label_metrics_ready = false;
+  s_tag_label_metrics_ready = false;
 }
 
 void radarDisplayRefreshAircraft() {

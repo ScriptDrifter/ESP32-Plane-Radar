@@ -15,6 +15,7 @@
 
 #include "config.h"
 #include "services/radar_location.h"
+#include "ui/radar_display.h"
 #include "ui/radar_range.h"
 #include "ui/status_screens.h"
 
@@ -105,6 +106,18 @@ WiFiManagerParameter s_param_vc_right_lat("vc_right_lat", "View cone right edge 
 WiFiManagerParameter s_param_vc_right_lon("vc_right_lon", "View cone right edge longitude", "0",
                                            kCoordParamLen, kCoordInputAttrs);
 
+constexpr int kRangeParamLen = 8;
+constexpr char kRangeInputAttrs[] = " type=\"number\" step=\"0.1\" min=\"0.1\"";
+WiFiManagerParameter s_sep_ranges("<br/>");
+WiFiManagerParameter s_param_range0("range0", "Range preset 1 (in selected units)", "2", kRangeParamLen, kRangeInputAttrs);
+WiFiManagerParameter s_param_range1("range1", "Range preset 2", "5",  kRangeParamLen, kRangeInputAttrs);
+WiFiManagerParameter s_param_range2("range2", "Range preset 3", "10", kRangeParamLen, kRangeInputAttrs);
+WiFiManagerParameter s_param_range3("range3", "Range preset 4", "15", kRangeParamLen, kRangeInputAttrs);
+WiFiManagerParameter s_param_range4("range4", "Range preset 5", "25", kRangeParamLen, kRangeInputAttrs);
+WiFiManagerParameter* const s_range_params[ui::radar::kRangePresetCount] = {
+    &s_param_range0, &s_param_range1, &s_param_range2, &s_param_range3, &s_param_range4
+};
+
 void refreshPortalParamDefaults() {
   char lat_buf[kCoordParamLen + 1];
   char lon_buf[kCoordParamLen + 1];
@@ -135,6 +148,17 @@ void refreshPortalParamDefaults() {
   s_param_vc_right_lat.setValue(vc_buf, kCoordParamLen);
   snprintf(vc_buf, sizeof(vc_buf), "%.6f", ui::radar::viewConeRightLon());
   s_param_vc_right_lon.setValue(vc_buf, kCoordParamLen);
+
+  for (uint8_t i = 0; i < ui::radar::kRangePresetCount; ++i) {
+    char range_buf[kRangeParamLen + 1];
+    const float ring3_km = ui::radar::rangePreset(i).ring3_km;
+    if (ui::radar::useMiles()) {
+      snprintf(range_buf, sizeof(range_buf), "%.2f", ring3_km / ui::radar::kKmPerMile);
+    } else {
+      snprintf(range_buf, sizeof(range_buf), "%.1f", ring3_km);
+    }
+    s_range_params[i]->setValue(range_buf, kRangeParamLen);
+  }
 }
 
 void onPortalParamsSaved() {
@@ -149,6 +173,12 @@ void onPortalParamsSaved() {
       s_param_vc_enabled.getValue(),
       s_param_vc_left_lat.getValue(),  s_param_vc_left_lon.getValue(),
       s_param_vc_right_lat.getValue(), s_param_vc_right_lon.getValue());
+  ui::radar::saveRangePresetsFromPortal(
+      s_param_range0.getValue(), s_param_range1.getValue(),
+      s_param_range2.getValue(), s_param_range3.getValue(),
+      s_param_range4.getValue(),
+      ui::radar::useMiles());
+  ui::radarDisplayResetMetrics();
 }
 
 void attachPortalParams(WiFiManager& wm) {
@@ -165,6 +195,10 @@ void attachPortalParams(WiFiManager& wm) {
   wm.addParameter(&s_param_vc_left_lon);
   wm.addParameter(&s_param_vc_right_lat);
   wm.addParameter(&s_param_vc_right_lon);
+  wm.addParameter(&s_sep_ranges);
+  for (uint8_t i = 0; i < ui::radar::kRangePresetCount; ++i) {
+    wm.addParameter(s_range_params[i]);
+  }
   wm.setSaveParamsCallback(onPortalParamsSaved);
 }
 

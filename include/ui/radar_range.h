@@ -24,17 +24,10 @@ struct RangePreset {
 
 constexpr float kRing3ToOuterKm = 4.0f / 3.0f;
 constexpr float kKmPerMile = 1.609344f;
+constexpr size_t kRangePresetCount = 5;
 
-constexpr RangePreset kRangePresets[] = {
-    {2.0f * kKmPerMile, 2.0f * kKmPerMile * kRing3ToOuterKm},
-    {5.0f, 5.0f * kRing3ToOuterKm},
-    {10.0f, 10.0f * kRing3ToOuterKm},
-    {15.0f, 15.0f * kRing3ToOuterKm},
-    {25.0f, 25.0f * kRing3ToOuterKm},
-};
-
-constexpr size_t kRangePresetCount =
-    sizeof(kRangePresets) / sizeof(kRangePresets[0]);
+/** Runtime accessor — presets are user-configurable via the portal. */
+const RangePreset& rangePreset(uint8_t index);
 
 /** Load saved range and distance units from flash. Call once after boot. */
 void rangeInit();
@@ -52,6 +45,9 @@ void saveMilesFromPortal(const char* checkbox_value);
 void saveRunwaysFromPortal(const char* checkbox_value);
 void formatRing3Label(char* buf, size_t len, float ring3_km, bool use_miles);
 void formatCurrentRing3Label(char* buf, size_t len);
+/** Save 5 range presets from portal strings (input_is_miles: true if values are in mi). */
+void saveRangePresetsFromPortal(const char* r0, const char* r1, const char* r2,
+                                 const char* r3, const char* r4, bool input_is_miles);
 /** Reset distance units to km (e.g. with WiFi credential wipe). */
 void unitsReset();
 

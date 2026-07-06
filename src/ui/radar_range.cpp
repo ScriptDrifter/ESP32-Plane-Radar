@@ -21,7 +21,17 @@ constexpr char kPrefsVcLeftLatKey[]  = "vcLeftLat";
 constexpr char kPrefsVcLeftLonKey[]  = "vcLeftLon";
 constexpr char kPrefsVcRightLatKey[] = "vcRightLat";
 constexpr char kPrefsVcRightLonKey[] = "vcRightLon";
+constexpr char kPrefsRangeKmKeys[kRangePresetCount][7] = {
+    "range0", "range1", "range2", "range3", "range4"
+};
 constexpr uint8_t kDefaultRangeIndex = 2;  // 10 km ring
+
+// Default ring3 km values for the 5 presets.
+constexpr float kDefaultRangeKm[kRangePresetCount] = {
+    2.0f * kKmPerMile, 5.0f, 10.0f, 15.0f, 25.0f
+};
+
+RangePreset s_range_presets[kRangePresetCount];
 
 Preferences s_prefs;
 uint8_t s_range_index = kDefaultRangeIndex;
@@ -89,6 +99,10 @@ void rangeInit() {
   s_vc_left_lon  = s_prefs.getFloat(kPrefsVcLeftLonKey,  0.0f);
   s_vc_right_lat = s_prefs.getFloat(kPrefsVcRightLatKey, 0.0f);
   s_vc_right_lon = s_prefs.getFloat(kPrefsVcRightLonKey, 0.0f);
+  for (uint8_t i = 0; i < kRangePresetCount; ++i) {
+    const float km = s_prefs.getFloat(kPrefsRangeKmKeys[i], kDefaultRangeKm[i]);
+    s_range_presets[i] = { km, km * kRing3ToOuterKm };
+  }
   s_prefs.end();
 }
 
@@ -97,7 +111,12 @@ void rangeNext() {
   saveRangeIndex();
 }
 
-const RangePreset& rangeCurrent() { return kRangePresets[s_range_index]; }
+const RangePreset& rangePreset(uint8_t index) {
+  if (index >= kRangePresetCount) index = 0;
+  return s_range_presets[index];
+}
+
+const RangePreset& rangeCurrent() { return s_range_presets[s_range_index]; }
 
 uint8_t rangeIndex() { return s_range_index; }
 
@@ -144,12 +163,33 @@ void formatCurrentRing3Label(char* buf, size_t len) {
   formatRing3Label(buf, len, rangeCurrent().ring3_km, s_use_miles);
 }
 
+void saveRangePresetsFromPortal(const char* r0, const char* r1, const char* r2,
+                                 const char* r3, const char* r4, bool input_is_miles) {
+  const char* vals[kRangePresetCount] = { r0, r1, r2, r3, r4 };
+  if (!s_prefs.begin(kPrefsNamespace, false)) return;
+  for (uint8_t i = 0; i < kRangePresetCount; ++i) {
+    float km = kDefaultRangeKm[i];
+    if (vals[i] && vals[i][0] != '\0') {
+      const float v = strtof(vals[i], nullptr);
+      if (v > 0.1f && v < 1000.0f) {
+        km = input_is_miles ? v * kKmPerMile : v;
+      }
+    }
+    s_range_presets[i] = { km, km * kRing3ToOuterKm };
+    s_prefs.putFloat(kPrefsRangeKmKeys[i], km);
+  }
+  s_prefs.end();
+}
+
 void unitsReset() {
   s_use_miles = false;
   s_show_runways = true;
   s_display_top = DisplayTop::kNorth;
   s_vc_enabled = false;
   s_vc_left_lat = s_vc_left_lon = s_vc_right_lat = s_vc_right_lon = 0.0f;
+  for (uint8_t i = 0; i < kRangePresetCount; ++i) {
+    s_range_presets[i] = { kDefaultRangeKm[i], kDefaultRangeKm[i] * kRing3ToOuterKm };
+  }
   if (s_prefs.begin(kPrefsNamespace, false)) {
     s_prefs.remove(kPrefsMilesKey);
     s_prefs.remove(kPrefsRunwaysKey);
@@ -159,6 +199,9 @@ void unitsReset() {
     s_prefs.remove(kPrefsVcLeftLonKey);
     s_prefs.remove(kPrefsVcRightLatKey);
     s_prefs.remove(kPrefsVcRightLonKey);
+    for (uint8_t i = 0; i < kRangePresetCount; ++i) {
+      s_prefs.remove(kPrefsRangeKmKeys[i]);
+    }
     s_prefs.end();
   }
 }
