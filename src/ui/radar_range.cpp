@@ -21,8 +21,7 @@ constexpr char kPrefsVcLeftLatKey[]  = "vcLeftLat";
 constexpr char kPrefsVcLeftLonKey[]  = "vcLeftLon";
 constexpr char kPrefsVcRightLatKey[] = "vcRightLat";
 constexpr char kPrefsVcRightLonKey[] = "vcRightLon";
-constexpr uint8_t kDefaultRangeIndex = 1;  // 10 km ring
-constexpr float kKmPerMile = 1.609344f;
+constexpr uint8_t kDefaultRangeIndex = 2;  // 10 km ring
 
 Preferences s_prefs;
 uint8_t s_range_index = kDefaultRangeIndex;
@@ -127,8 +126,14 @@ void saveRunwaysFromPortal(const char* checkbox_value) {
 
 void formatRing3Label(char* buf, size_t len, float ring3_km, bool use_miles) {
   if (use_miles) {
-    const int mi = static_cast<int>(lroundf(ring3_km / kKmPerMile));
-    snprintf(buf, len, "%dmi", mi);
+    const float mi = ring3_km / kKmPerMile;
+    const int mi_int = static_cast<int>(lroundf(mi));
+    // Show one decimal place when the value is far from a whole number (e.g. 1.5mi).
+    if (fabsf(mi - static_cast<float>(mi_int)) > 0.49f) {
+      snprintf(buf, len, "%.1fmi", mi);
+    } else {
+      snprintf(buf, len, "%dmi", mi_int);
+    }
   } else {
     const int km = static_cast<int>(lroundf(ring3_km));
     snprintf(buf, len, "%dkm", km);

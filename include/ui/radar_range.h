@@ -23,8 +23,10 @@ struct RangePreset {
 };
 
 constexpr float kRing3ToOuterKm = 4.0f / 3.0f;
+constexpr float kKmPerMile = 1.609344f;
 
 constexpr RangePreset kRangePresets[] = {
+    {2.0f * kKmPerMile, 2.0f * kKmPerMile * kRing3ToOuterKm},
     {5.0f, 5.0f * kRing3ToOuterKm},
     {10.0f, 10.0f * kRing3ToOuterKm},
     {15.0f, 15.0f * kRing3ToOuterKm},
