@@ -1,3 +1,12 @@
+# Fork Additions
+1. Added the **ability to rotate the radar** for non-north facing devices. Configurable via the WiFI portal, the user can set the top of the radar to face any of the cardinal directions (N/E/S/W).
+
+2. Using two additional lat/long pairs, the user can choose to **display a view cone** underneath the radar display. By specifying a left-view and right-view pair, the device will draw a cone to display the theoretical area at which a plane would be visible outside of a window; also configured via the web portal.
+
+3. The *five* default **range presets can be configured** via the WiFi configuration portal without having to hardcode and push new firmware for custom distances.
+
+4. The user can **specify additional airports to be displayed** on the radar that do not come pre-configured in `scripts/build_large_airports.py`
+
 # Plane Radar
 
 <img width="800" height="450" alt="plane-radar" src="https://github.com/user-attachments/assets/716d0992-dab8-47ba-8f1a-2aec7f607419" />
