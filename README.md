@@ -7,6 +7,8 @@
 
 4. The user can **specify additional airports to be displayed** on the radar that do not come pre-configured in `scripts/build_large_airports.py`
 
+5. Aircraft **speed is now also included** and drawn on the radar (shown in mph converted from knts).
+
 # Plane Radar
 
 <img width="800" height="450" alt="plane-radar" src="https://github.com/user-attachments/assets/716d0992-dab8-47ba-8f1a-2aec7f607419" />
