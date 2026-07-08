@@ -15,6 +15,7 @@ namespace {
 
 constexpr char kApiBase[] = "https://opendata.adsb.fi/api/v3/lat/";
 constexpr float kKmPerNm = 1.852f;
+constexpr float kKnotsToMph = 1.151f;
 constexpr int kConnectAttemptMs = 200;
 constexpr unsigned long kRequestTimeoutMs = 10000;
 
@@ -195,6 +196,8 @@ void fillTagFields(Aircraft* ac, const JsonObject& plane) {
 
   copyJsonStringTrimmed(plane, "t", ac->type, sizeof(ac->type));
   formatAltitudeTag(plane, ac->alt, sizeof(ac->alt));
+  snprintf(ac->speed, sizeof(ac->speed), "%d mph",
+           static_cast<int>(lroundf(ac->gs_knots * kKnotsToMph)));
 }
 
 }  // namespace
